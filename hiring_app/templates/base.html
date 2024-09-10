@@ -33,9 +33,9 @@
     
         <div class="collapse navbar-collapse justify-content-center" id="navbarSupportedContent">
             <ul class="navbar-nav mr-auto">
-                <li class="nav-item active">
+                <!-- <li class="nav-item active">
                     <a class="nav-link text-white" aria-current="page" href="#">LOGS </a>
-                </li>
+                </li> -->
                 {% if request.user.is_superuser %}
                 <li class="nav-item active">
                    <a class="nav-link text-white ml-4" aria-current="page" href="{% url 'upload_creteria' %}">Upload creteria</a>

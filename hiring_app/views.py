@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from .models import *
 from django.contrib import auth
 from django.contrib import messages
+from hiring_app.tasks import get_score , send_email
 
 
 @login_required
@@ -16,7 +17,7 @@ def home(request):
             name = request.user.username
             
             if message_context and message_context.name.endswith('.pdf'):
-                upload_dir = os.path.join(settings.MEDIA_ROOT, f'uploads/{request.user.username}')
+                upload_dir = os.path.join(f'/home/nagulesh/Documents/Projects/Ethical_hiring/Hiring_platform/uploads/{request.user.username}')
                 if not os.path.exists(upload_dir):
                     os.makedirs(upload_dir)
                 
@@ -59,6 +60,23 @@ def admin_dashboard(request):
     resume_info = ResumeDetails.objects.all()
     return render(request ,"index1.html" ,{"resume_info":resume_info})
 
+from django.core.mail import send_mail,EmailMessage
+from Hiring_platform.settings import EMAIL_HOST_USER
+def send_mail(request,id):
+    resume_info = ResumeDetails.objects.get(id=id)
+    to_user =  resume_info.emailid
+    print(to_user)
+    email=EmailMessage(
+        "Greeting on the resume evaluation",
+        " This message is for shortlisting you for next round of interview .",
+        EMAIL_HOST_USER,
+        [to_user],     
+    )
+    email.fail_silently=False,
+    email.send()
+    # send_email.delay(to_user)
+    return redirect("dashboard")
+
 
 def login(request):
     if request.method =="POST":
@@ -89,6 +107,7 @@ def logout_view(request):
 
 def success(request):
     user_detail = ResumeDetails.objects.filter(user=request.user)
+    print(user_detail)
     if not user_detail.exists():
         import os
         from dotenv import load_dotenv
@@ -101,12 +120,11 @@ def success(request):
 
         # documents = SimpleDirectoryReader('/home/nagulesh/Documents/Projects/Ethical_hiring/Hiring_platform/uploads/nagulesh03').load_data()
 
-        file = FileResumePath.objects.get(user =request.user)
+        file = FileResumePath.objects.get(user=request.user)
         file_path = file.path
 
         documents = SimpleDirectoryReader(file_path).load_data()
         nodes = Settings.node_parser.get_nodes_from_documents(documents)
-
 
 
         from llama_index.embeddings.gemini import GeminiEmbedding
@@ -173,8 +191,6 @@ def success(request):
 
                 retrieve_nodes = [combined_dict[r_id] for r_id in retrieve_ids]
                 return retrieve_nodes
-            
-
 
 
         from llama_index.core import get_response_synthesizer
@@ -251,7 +267,7 @@ def success(request):
         print(name,institution,city ,passing_out_year,Cgpa ,Degree ,skills ,work_experience ,projects ,achievements ,emailid ,phone_number)
 
         try:
-            ResumeDetails.objects.create(name=name,institution=institution,city=city ,passing_out_year=passing_out_year,Cgpa=Cgpa ,Degree =Degree,skills=skills ,work_experience=work_experience ,projects=projects ,achievements=achievements ,emailid=emailid ,phone_number=phone_number)
+            ResumeDetails.objects.create(user=request.user ,name=name,institution=institution,city=city ,passing_out_year=passing_out_year,Cgpa=Cgpa ,Degree =Degree,skills=skills ,work_experience=work_experience ,projects=projects ,achievements=achievements ,emailid=emailid ,phone_number=phone_number)
             print("created successfully")
             return redirect("response")
         except :
@@ -263,7 +279,7 @@ def success(request):
 def response(request):
     return render(request,"response.html")
 
-from hiring_app.tasks import get_score
+
 def upload_creteria(request):
     if request.method == "POST":
         message_context = request.FILES.get("message")
@@ -281,7 +297,7 @@ def upload_creteria(request):
 
         for i in file_paths:
             file_path = i.path
-            get_score.delay(file_path)
+            get_score.delay(file_path,i.user.id)
 
         return redirect("dashboard")
     

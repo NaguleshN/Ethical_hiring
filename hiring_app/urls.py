@@ -10,4 +10,5 @@ urlpatterns = [
     path("response/", views.response ,name ="response"),
     path("dashboard/", views.admin_dashboard ,name ="dashboard"),
     path("upload_creteria/", views.upload_creteria ,name ="upload_creteria"),
+    path("send_mail/<int:id>", views.send_mail ,name ="send_mail"),
 ]

@@ -7,7 +7,7 @@ class ResumeDetails(models.Model):
     name = models.CharField(max_length= 50 ,null =True)
     institution =models.CharField(max_length = 100,null =True)
     city =models.CharField(max_length= 50,null =True)
-    passing_out_year=models.IntegerField(default = 0,null =True)
+    passing_out_year=models.CharField(max_length=10 ,default = 0,null =True)
     Cgpa = models.FloatField(default= 0 ,null =True)
     Degree =models.CharField(max_length= 50,null =True)
     skills = models.CharField(max_length = 200,null =True)

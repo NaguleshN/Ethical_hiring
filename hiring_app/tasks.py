@@ -2,7 +2,7 @@ from celery import shared_task
 from .models import *
 
 @shared_task
-def get_score(file_path):
+def get_score(file_path,user_id):
         import os
         from dotenv import load_dotenv
 
@@ -112,8 +112,8 @@ def get_score(file_path):
         def execute_query(query, result_holder, query_engine = custom_query_engine):
             result_holder[0] = query_engine.query(query)
 
-        query = "Compare the skills listed by Aravind with the provided Required Skills, also based on the score metrics for those skills, calculate the scores for Aravind skills in required and other metrics such as experience, projects. Give only the total scores for each category and provide a two line description indicating 'why the candidate is eligible for this job role' (based on their strengths) and dont generate anything other than that. NOTE: Scores must be calculated for every category that is mentioned in the provided criteria file in the context. Give score in a json format."
-        
+        query = "Compare the skills listed by Aravind with the provided Required Skills, also based on the score metrics for those skills, calculate the scores for Aravind skills in required and other metrics such as experience, projects. Give only the total percentage for each category provided in the criteria context and the total percentage for each category should be out of 100%. NOTE: Give the categpries (Tech Skills, Experience&Achievements, Certifications, Projects) and their percentage out of 100 from the requirements in each category n. Give this is in a dictionary format without any quotes."
+
         if query == "exit":
             print("Exiting...")
 
@@ -133,3 +133,38 @@ def get_score(file_path):
         print(type(result))
         result1=str(result)
         print(type(result1))
+        import json
+        # my_dict = json.loads(result1)
+        my_dict = eval(result1)
+        sum=0
+        for i in my_dict:
+            sum+=my_dict[i]
+        print(sum)
+        from hiring_app.models import ResumeDetails
+        from django.contrib.auth.models import User
+
+        print(user_id)
+        user_det = User.objects.get(id=user_id)
+        print(user_det)
+        print(user_det.username)
+        detail = ResumeDetails.objects.get(user=user_det)
+        print(detail)
+        detail.score = sum
+        detail.save()
+        
+
+from django.core.mail import send_mail,EmailMessage
+from Hiring_platform import settings
+
+@shared_task
+def send_email(to_user):
+
+    email=EmailMessage(
+        "Greeting on the resume evaluation",
+        " This message is for shortlisting you for next round of interview .",
+        settings.EMAIL_HOST_USER,
+        [to_user],     
+    )
+    email.fail_silently=False,
+    email.send()
+    print(" Email sent successfully ")
