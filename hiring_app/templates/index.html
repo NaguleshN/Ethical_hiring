@@ -71,15 +71,12 @@
                 <form  method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
                   <div class="form-group">
-                      <label for="form4Example2">Upload the Excel Sheet </label>
+                      <label for="form4Example2">Upload the resume ( format : pdf ) </label>
                       
                       <input type="file" name="message" id="form4Example2" class="form-control" accept="application/pdf" required>
                     </div>
                     
-                    <!-- <div class="form-group">
-                      <label for="form4Example2">Example for resume  :  </label>
-                      <a  href="#" download >Download</a>
-                    </div> -->
+                    
 
 
                   <button type="submit" class="subscribe btn btn-primary btn-block rounded-pill shadow-sm mt-5"> Send </button>
