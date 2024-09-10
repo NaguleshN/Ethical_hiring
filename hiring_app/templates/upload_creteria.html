@@ -60,8 +60,7 @@
             <ul role="tablist" class="nav bg-light nav-pills rounded-pill nav-fill mb-3">
                               <li class="nav-item">
                                   <div disabled href="#" class="nav-link rounded-pill">
-                                      
-                                      Upload your resume
+                                      Upload your creteria
                                   </div>
                               </li>
                           </ul>
@@ -78,15 +77,13 @@
                   {% csrf_token %}
                   
                   <div class="form-group">
-                      <label for="form4Example2">Upload the resume ( format : pdf ) </label>
+                      <label for="form4Example2">Upload the createria ( format : txt ) </label>
                       
-                      <input type="file" name="message" id="form4Example2" class="form-control" accept="application/pdf" required>
+                      <input type="file" name="message" id="form4Example2" class="form-control" accept=".txt" required>
                     </div>
                     
-                    
-
-
                   <button type="submit" class="subscribe btn btn-primary btn-block rounded-pill shadow-sm mt-5"> Send </button>
+
                 </form>
               </div>
             </div>
