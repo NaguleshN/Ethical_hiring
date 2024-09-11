@@ -13,9 +13,7 @@ def screen(request):
         questions = Question.objects.all()
 
         # unanswered_questions = [q for q in questions if q.id not in answered_questions]
-
         # quest_answered =Question.objects.get(user=request.user)
-
 
         if not unanswered_questions:
             return render(request, 'completed.html')
@@ -26,7 +24,6 @@ def screen(request):
             'question': current_question,
             'questions': json.dumps(list(questions.values('id', 'text')))
         })
-
 
 
 @csrf_exempt

@@ -52,11 +52,8 @@
       <div class="row">
           <div class="col-lg-7 mx-auto">
               <div class="bg-white rounded-lg shadow-sm p-5">
-                <a href="{% url 'logout' %}">Logout </a>
-                <!-- <a href="{% url 'logout' %}" class="flex bg-red-500 text-white font-bold px-2 py-2 rounded ml-auto shadow-2xl  hover:shadow-none" > <div class="pr-1">LOGOUT</div><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </a> -->
+                <!-- <a href="{% url 'logout' %}">Logout </a> -->
+            
             <ul role="tablist" class="nav bg-light nav-pills rounded-pill nav-fill mb-3">
                               <li class="nav-item">
                                   <div disabled href="#" class="nav-link rounded-pill">
@@ -75,13 +72,13 @@
                 
                 <form  method="POST" enctype="multipart/form-data">
                   {% csrf_token %}
-                  
+
                   <div class="form-group">
                       <label for="form4Example2">Upload the createria ( format : txt ) </label>
-                      
+
                       <input type="file" name="message" id="form4Example2" class="form-control" accept=".txt" required>
                     </div>
-                    
+
                   <button type="submit" class="subscribe btn btn-primary btn-block rounded-pill shadow-sm mt-5"> Send </button>
 
                 </form>
