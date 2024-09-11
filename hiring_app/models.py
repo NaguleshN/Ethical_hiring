@@ -22,6 +22,7 @@ class ResumeDetails(models.Model):
     exp_achieve_score=models.FloatField(default=0)
     cert_score=models.FloatField(default=0)
     project_score=models.FloatField(default=0)
+    video_score=models.FloatField(default=0)
     status=models.CharField(max_length=20,  choices=status_choice)
 
 class ResumeCheck(models.Model):

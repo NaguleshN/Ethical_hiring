@@ -9,7 +9,7 @@ class Question(models.Model):
 
     def _str_(self):
         return self.text
-    
+
 class VideoRecording(models.Model):
     user =models.ForeignKey(User ,on_delete=models.CASCADE ,null=True)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)

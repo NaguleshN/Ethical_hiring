@@ -62,19 +62,12 @@ def admin_dashboard(request):
 
 from django.core.mail import send_mail,EmailMessage
 from Hiring_platform.settings import EMAIL_HOST_USER
+from hiring_app.tasks import send_mail_user
 def send_mail(request,id):
     resume_info = ResumeDetails.objects.get(id=id)
     to_user =  resume_info.emailid
     print(to_user)
-    email=EmailMessage(
-        "Greeting on the resume evaluation",
-        " This message is for shortlisting you for next round of interview .",
-        EMAIL_HOST_USER,
-        [to_user],
-    )
-    email.fail_silently=False,
-    email.send()
-    # send_email.delay(to_user)
+    send_mail_user.delay(to_user)
     return redirect("dashboard")
 
 
@@ -98,6 +91,7 @@ def login(request):
     if request.user.is_authenticated:
         return redirect("home")
     return render(request, "login.html")
+
 
 @login_required
 def logout_view(request):
@@ -280,6 +274,7 @@ def response(request):
     from screening import views
     resume_info = ResumeDetails.objects.get(user=request.user)
     if resume_info.status == "approved" :
+
         return redirect("screen")
     return render(request,"response.html")
 
@@ -298,7 +293,7 @@ def upload_creteria(request):
             with open(file_path, 'wb+') as destination:
                 for chunk in message_context.chunks():
                     destination.write(chunk)
-
+    
         for i in file_paths:
             file_path = i.path
             get_score.delay(file_path,i.user.id)
@@ -307,11 +302,16 @@ def upload_creteria(request):
     
     return render(request,"upload_creteria.html")
 
-
+from hiring_app.tasks import generating_questions
 def approve(request,id):
     resume_detail = ResumeDetails.objects.get(id=id)
     resume_detail.status = "approved"
+    user=resume_detail.user
     resume_detail.save()
+    file_path_info = FileResumePath.objects.get(user=user)
+    file_path = file_path_info.path
+
+    generating_questions.delay(file_path,user.id)
     return redirect("dashboard")
 
 

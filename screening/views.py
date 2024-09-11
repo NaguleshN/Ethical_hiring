@@ -1,13 +1,14 @@
-from django.shortcuts import render, HttpResponse
+from django.shortcuts import render, HttpResponse ,redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import VideoRecording, Question
-from .tasks import extract_audio_from_video
+from .tasks import extract_audio_from_video 
 import json
-
 
 def screen(request):
         # answered_questions = request.session.get('answered_questions', [])
+
+        # generating_questions.delay()
         unanswered_questions = Question.objects.filter(user=request.user,status="not_attended")
 
         questions = Question.objects.all()
@@ -16,7 +17,7 @@ def screen(request):
         # quest_answered =Question.objects.get(user=request.user)
 
         if not unanswered_questions:
-            return render(request, 'completed.html')
+            return redirect('completed')
 
         current_question = unanswered_questions[0]
 
@@ -57,3 +58,8 @@ def upload_video(request):
 
 
 #  celery -A Hiring_platform worker --loglevel=info
+from hiring_app.models import *
+from screening.tasks import *
+def completed_task(request):
+    generate_score.delay(request.user.id)
+    return render(request,"completed.html")

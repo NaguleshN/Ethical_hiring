@@ -55,6 +55,7 @@
                     <td>{{i.tech_skill_score}}</td>
                     <td>{{i.exp_achieve_score}}</td>
                     <td>{{i.cert_score}}</td>
+                    
                     <td>{{i.project_score}}</td>
                     <td>{{i.score}}</td>
                     {% else %}
@@ -65,6 +66,11 @@
                     <td>Not Yet</td>
                     {% endif %}
 
+                    {% for i in resume_info %}
+                    <td>{{i.video_score}}</td>
+                    {% else %}
+                    <td>Not Yet</td>
+                    {% endif %}
 
                     <td>{{i.Cgpa}}</td>
                     <td>{{i.phone_number}}</td>
