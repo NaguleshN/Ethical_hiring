@@ -140,6 +140,8 @@ def get_score(file_path,user_id):
         for i in my_dict:
             sum+=my_dict[i]
         print(sum)
+        print(my_dict)
+        print(type(my_dict))
         from hiring_app.models import ResumeDetails
         from django.contrib.auth.models import User
 
@@ -149,7 +151,13 @@ def get_score(file_path,user_id):
         print(user_det.username)
         detail = ResumeDetails.objects.get(user=user_det)
         print(detail)
-        detail.score = sum
+        print("Skills ", type(my_dict["Tech Skills"]))
+
+        detail.tech_skill_score = my_dict["Tech Skills"]
+        detail.exp_achieve_score = my_dict["Experience&Achievements"]
+        detail.cert_score = my_dict["Certifications"]
+        detail.project_score = my_dict["Projects"]
+        detail.score = sum/2
         detail.save()
         
 

@@ -28,7 +28,7 @@ def home(request):
                         destination.write(chunk)
 
                 check = ResumeCheck.objects.get(user = request.user)
-                check.upload_status =1 
+                check.upload_status=1 
                 check.save()
 
                 set_path =f"/home/nagulesh/Documents/Projects/Ethical_hiring/Hiring_platform/uploads/{request.user.username}"
@@ -70,7 +70,7 @@ def send_mail(request,id):
         "Greeting on the resume evaluation",
         " This message is for shortlisting you for next round of interview .",
         EMAIL_HOST_USER,
-        [to_user],     
+        [to_user],
     )
     email.fail_silently=False,
     email.send()
@@ -224,7 +224,7 @@ def success(request):
         # while True:
             # print(dir(VectorIndexRetriever))
         # query = input("Enter query: ")
-        query = "give a array containing the name, institution, city, passout year, CGPA, Degree, skills, work experience, projects, achievements, emailID, phone number of the student Aravind G from the data context given. If he dont have any of these fill the array with None in the respective index"
+        query = "give a array containing the name, institution, city, passout year, CGPA, Degree, skills, work experience, projects, achievements, emailID, phone number of the student from the data context given. If he dont have any of these fill the array with None in the respective index"
         # query_set = ["what is the name of the student", "what is the name of the institution"]
         # out = []
         # for i in query_set :
@@ -267,16 +267,20 @@ def success(request):
         print(name,institution,city ,passing_out_year,Cgpa ,Degree ,skills ,work_experience ,projects ,achievements ,emailid ,phone_number)
 
         try:
-            ResumeDetails.objects.create(user=request.user ,name=name,institution=institution,city=city ,passing_out_year=passing_out_year,Cgpa=Cgpa ,Degree =Degree,skills=skills ,work_experience=work_experience ,projects=projects ,achievements=achievements ,emailid=emailid ,phone_number=phone_number)
+            ResumeDetails.objects.create(user=request.user ,name=name,institution=institution,city=city ,passing_out_year=passing_out_year,Cgpa=Cgpa ,Degree =Degree,skills=skills ,work_experience=work_experience ,projects=projects ,achievements=achievements ,emailid=emailid ,phone_number=phone_number, status ="pending")
             print("created successfully")
             return redirect("response")
         except :
             print("Error occured in object creation")
         return  render (request , "upload.html" )
     else:
-        return render(request,"upload.html")
+        return redirect("response")
 
 def response(request):
+    from screening import views
+    resume_info = ResumeDetails.objects.get(user=request.user)
+    if resume_info.status == "approved" :
+        return redirect("screen")
     return render(request,"response.html")
 
 
@@ -302,3 +306,17 @@ def upload_creteria(request):
         return redirect("dashboard")
     
     return render(request,"upload_creteria.html")
+
+
+def approve(request,id):
+    resume_detail = ResumeDetails.objects.get(id=id)
+    resume_detail.status = "approved"
+    resume_detail.save()
+    return redirect("dashboard")
+
+
+def reject(request,id):
+    resume_detail = ResumeDetails.objects.get(id=id)
+    resume_detail.status = "rejected"
+    resume_detail.save()
+    return redirect("dashboard")

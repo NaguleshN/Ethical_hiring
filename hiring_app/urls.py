@@ -11,4 +11,6 @@ urlpatterns = [
     path("dashboard/", views.admin_dashboard ,name ="dashboard"),
     path("upload_creteria/", views.upload_creteria ,name ="upload_creteria"),
     path("send_mail/<int:id>", views.send_mail ,name ="send_mail"),
+    path("approve/<int:id>", views.approve ,name ="approve"),
+    path("reject/<int:id>", views.reject ,name ="reject"),
 ]

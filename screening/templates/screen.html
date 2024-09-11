@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Recorder</title>
+</head>
+<body>
+    <h1>Record Video and Audio</h1>
+
+    <p id="questionText">{{ question.text }}</p> <!-- Display the current question -->
+
+    <video id="video" autoplay muted></video>
+    <br />
+    <button id="startRecordBtn">Start Recording</button>
+    <button id="stopRecordBtn" disabled>Stop Recording</button>
+    <br />
+    <p id="countdownDisplay">Time Left: 60s</p>
+    <video id="recordedVideo" controls></video>
+
+    <script>
+        let mediaRecorder;
+        let recordedChunks = [];
+        let recordingTimeout;
+        let countdownInterval;
+        let timeLeft = 60; // Initial countdown time in seconds
+
+        const videoElement = document.getElementById('video');
+        const recordedVideoElement = document.getElementById('recordedVideo');
+        const startRecordBtn = document.getElementById('startRecordBtn');
+        const stopRecordBtn = document.getElementById('stopRecordBtn');
+        const countdownDisplay = document.getElementById('countdownDisplay');
+        const questionId = "{{ question.id }}"; // Pass the question ID to JavaScript
+
+        async function startRecording() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            videoElement.srcObject = stream;
+            
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = function(event) {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async function() {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const videoURL = URL.createObjectURL(blob);
+                recordedVideoElement.src = videoURL;
+
+                const formData = new FormData();
+                formData.append('video', blob, 'recorded_video.webm');
+                formData.append('question_id', questionId); // Add question_id to form data
+
+                try {
+                    const response = await fetch('/screen/upload/', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    console.log(result);
+                    alert('Video uploaded successfully!');
+                    // Redirect to next question or refresh the page
+                    window.location.reload(); // Refresh to load the next question
+                } catch (error) {
+                    console.error('Error uploading video:', error);
+                    alert(`Error uploading video: ${error.message}`);
+                }
+
+                recordedChunks = [];
+            };
+
+            mediaRecorder.start();
+            startRecordBtn.disabled = true;
+            stopRecordBtn.disabled = false;
+
+            // Start the countdown
+            timeLeft = 60;
+            countdownDisplay.textContent = `Time Left: ${timeLeft}s`;
+
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                countdownDisplay.textContent = `Time Left: ${timeLeft}s`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    stopRecording(); // Automatically stop recording
+                }
+            }, 1000);
+
+            // Set a timeout to stop the recording after 1 minute (60000 milliseconds)
+            recordingTimeout = setTimeout(stopRecording, 60000);
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            videoElement.srcObject.getTracks().forEach(track => track.stop());
+            startRecordBtn.disabled = false;
+            stopRecordBtn.disabled = true;
+
+            // Clear the timeout if the recording is stopped manually
+            clearTimeout(recordingTimeout);
+            clearInterval(countdownInterval);
+        }
+
+        startRecordBtn.addEventListener('click', startRecording);
+        stopRecordBtn.addEventListener('click', stopRecording);
+    </script>
+</body>
+</html>
+

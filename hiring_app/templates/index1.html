@@ -35,9 +35,14 @@
                 <tr>
                     <th>Name</th>
                     <th>skills</th>
-                    <th>score</th>
+                    <th>Tech skill score</th>
+                    <th>Experience& Achievement score</th>
+                    <th>Certification score</th>
+                    <th>Project score</th>
+                    <th>Overall score</th>
                     <th>CGPA</th>
                     <th>Phone Number</th>
+                    <th>Approve</th>
                     <th>Send mail</th>
                 </tr>
             </thead>
@@ -46,13 +51,31 @@
                 <tr>
                     <td>{{i.name}}</td>
                     <td>{{i.skills}}</td>
-                    {% if i.score != 0.0 %}
+                    {% if i.tech_skill_score != 0.0 %}
+                    <td>{{i.tech_skill_score}}</td>
+                    <td>{{i.exp_achieve_score}}</td>
+                    <td>{{i.cert_score}}</td>
+                    <td>{{i.project_score}}</td>
                     <td>{{i.score}}</td>
                     {% else %}
                     <td>Not Yet</td>
+                    <td>Not Yet</td>
+                    <td>Not Yet</td>
+                    <td>Not Yet</td>
+                    <td>Not Yet</td>
                     {% endif %}
+
+
                     <td>{{i.Cgpa}}</td>
                     <td>{{i.phone_number}}</td>
+                    {% if i.status == "pending" %}
+                    <td>
+                        <a class="btn btn-primary m-3" href="{% url 'approve' i.id %}" role="button">Approve user</a>
+                        <a class="btn btn-danger" href="{% url 'reject' i.id %}" role="button">Reject user</a>
+                    </td>
+                    {% else %}
+                    <td>{{i.status}}</td>
+                    {% endif %}
                     <td><a class="btn btn-primary" href="{% url 'send_mail' i.id %}" role="button">Send mail</a></td>
                 </tr>
                 {% endfor %}
