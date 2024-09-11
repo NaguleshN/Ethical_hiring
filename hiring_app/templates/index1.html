@@ -28,9 +28,9 @@
     </style>
 </head>
 <body>
-    <div class="container mt-4">
+    <div class="container-fluid mt-4 ">
         <h1 class="mb-4">User resume Info</h1>
-        <table id="example" class="table table-striped table-bordered" style="width:110%">
+        <table id="example" class="table table-striped table-bordered" style="width:100%">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -40,6 +40,7 @@
                     <th>Certification score</th>
                     <th>Project score</th>
                     <th>Overall score</th>
+                    <th>screening score</th>
                     <th>CGPA</th>
                     <th>Phone Number</th>
                     <th>Approve</th>
@@ -66,7 +67,7 @@
                     <td>Not Yet</td>
                     {% endif %}
 
-                    {% for i in resume_info %}
+                    {% if i.tech_skill_score != 0.0 %}
                     <td>{{i.video_score}}</td>
                     {% else %}
                     <td>Not Yet</td>

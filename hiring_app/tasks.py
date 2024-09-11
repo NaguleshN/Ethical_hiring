@@ -112,7 +112,7 @@ def get_score(file_path,user_id):
         def execute_query(query, result_holder, query_engine = custom_query_engine):
             result_holder[0] = query_engine.query(query)
 
-        query = "Compare the skills listed by Aravind with the provided Required Skills, also based on the score metrics for those skills, calculate the scores for Aravind skills in required and other metrics such as experience, projects. Give only the total percentage for each category provided in the criteria context and the total percentage for each category should be out of 100%. NOTE: Give the categpries (Tech Skills, Experience&Achievements, Certifications, Projects) and their percentage out of 100 from the requirements in each category n. Give this is in a dictionary format without any quotes."
+        query = "Compare the skills listed by student with the provided Required Skills, also based on the score metrics for those skills, calculate the scores for student skills in required and other metrics such as experience, projects. Give only the total percentage for each category provided in the criteria context and the total percentage for each category should be out of 100%. NOTE: Give the categpries (Tech Skills, Experience&Achievements, Certifications, Projects) and their percentage out of 100 from the requirements in each category n. Give this is in a dictionary format without any quotes."
 
         if query == "exit":
             print("Exiting...")
