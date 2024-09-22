@@ -6,7 +6,6 @@ from .models import VideoRecording
 from google.cloud import speech_v1p1beta1 as speech
 import speech_recognition as sr
 from pydub import AudioSegment
-from django.conf import settings
 import io
 from assemblyai import Transcriber
 
