@@ -3,10 +3,7 @@ import threading
 
 
 while True:
-    # print(dir(VectorIndexRetriever))
     query = input("Enter query: ")
-    
-
 
     if query == "exit":
         print("Exiting...")
