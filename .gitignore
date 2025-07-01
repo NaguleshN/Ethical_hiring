@@ -142,3 +142,10 @@ GitHub.sublime-settings
 .history
 
 uploads/
+hiring_app/pdf_content_extraction.py
+hiring_app/test_extend.py
+base.html
+index.html
+response.html
+index.html
+screen.html
