@@ -15,6 +15,7 @@ A Django-based hiring platform with asynchronous task processing using Celery fo
 
 
 ## Features
+
 Ethical Hiring Platform: Develop a generative AI-powered recruitment platform
 that screens resumes and interview processes for biases and suggests diverse
 and qualified candidates.
