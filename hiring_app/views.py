@@ -7,7 +7,6 @@ from .models import *
 from django.contrib import auth
 from django.contrib import messages
 from hiring_app.tasks import get_score , send_email
-from django.conf import settings
 
 
 @login_required
@@ -62,17 +61,45 @@ def home(request):
 
 @login_required
 def admin_dashboard(request):
-    resume_info = ResumeDetails.objects.all()
+    resume_info = ResumeDetails.objects.select_related('user').all()
     return render(request ,"index1.html" ,{"resume_info":resume_info})
 
 # from django.core.mail import send_mail,EmailMessage
 from Hiring_platform.settings import EMAIL_HOST_USER
 from hiring_app.tasks import send_mail_user
-def send_mail(request,id):
-    resume_info = ResumeDetails.objects.get(id=id)
-    to_user =  resume_info.emailid
-    print(to_user)
-    send_mail_user.delay(to_user)
+
+@login_required
+def send_mail(request, id):
+    """
+    Send email notification to candidate about interview shortlisting.
+    """
+    try:
+        resume_info = ResumeDetails.objects.get(id=id)
+        to_user = resume_info.emailid
+        
+        if not to_user:
+            messages.error(request, f"❌ No email address found for candidate ID {id}")
+            print(f"❌ No email address found for candidate ID {id}")
+            return redirect("dashboard")
+        
+        print(f"📧 Queuing email to: {to_user}")
+        
+        # Queue the email task
+        task = send_mail_user.delay(to_user)
+        print(f"✅ Email task queued with ID: {task.id}")
+        
+        messages.success(request, f"✅ Email queued successfully for {to_user}")
+        
+    except ResumeDetails.DoesNotExist:
+        messages.error(request, f"❌ Resume details not found for ID {id}")
+        print(f"❌ Resume details not found for ID {id}")
+    except Exception as e:
+        error_msg = f"❌ Error queuing email: {str(e)}"
+        messages.error(request, error_msg)
+        print(error_msg)
+        import traceback
+        print(traceback.format_exc())
+    
     return redirect("dashboard")
 
 
@@ -124,14 +151,20 @@ def success(request):
             nodes = Settings.node_parser.get_nodes_from_documents(documents)
 
 
-            from llama_index.embeddings.gemini import GeminiEmbedding
+            from llama_index.embeddings.huggingface import HuggingFaceEmbedding
             from llama_index.llms.gemini import Gemini
 
-            Settings.embed_model = GeminiEmbedding(
-                model_name="models/embedding-001", api_key=os.getenv("GOOGLE_API_KEY")
+            # Disable MPS on macOS to prevent crashes
+            os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
+            os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+
+            # Use local embeddings (FREE - no API quota!)
+            Settings.embed_model = HuggingFaceEmbedding(
+                model_name="BAAI/bge-small-en-v1.5",
+                device="cpu"  # Force CPU to avoid MPS issues on macOS
             )
             print(os.getenv("GOOGLE_API_KEY"))
-            Settings.llm = Gemini(api_key=os.getenv("GOOGLE_API_KEY"), temperature=0.7)
+            Settings.llm = Gemini(model="gemini-2.5-flash", api_key=os.getenv("GOOGLE_API_KEY"), temperature=0.7)
 
             from llama_index.core import StorageContext
 
@@ -256,13 +289,20 @@ def success(request):
             query_thread = threading.Thread(target=execute_query, args=(query, result_holder))
             query_thread.start()
 
-            query_thread.join(timeout=5)
+            # Increased timeout to 30 seconds for local embeddings (first run may be slower)
+            query_thread.join(timeout=30)
 
             if query_thread.is_alive():
-                print("Query timed out, returning null.")
-                result = None
+                print("Query timed out after 30 seconds.")
+                # Return error message to user
+                return render(request, "upload.html", {"error": "Resume processing timed out. Please try again."})
             else:
                 result = result_holder[0]
+
+            # Check if result is None
+            if result is None:
+                print("Query returned None")
+                return render(request, "upload.html", {"error": "Failed to process resume. Please try again."})
 
             print(type(result))
             result1=str(result)
@@ -272,7 +312,11 @@ def success(request):
             import ast
             result1_cleaned = result1.replace("```json", "").replace("```", "").strip()
 
-            array = ast.literal_eval(result1_cleaned)
+            try:
+                array = ast.literal_eval(result1_cleaned)
+            except (ValueError, SyntaxError) as e:
+                print(f"Error parsing result: {e}")
+                return render(request, "upload.html", {"error": "Failed to parse resume data. Please try again."})
             print(array)
             print(type(array))
 

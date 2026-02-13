@@ -1,40 +1,141 @@
-<!DOCTYPE html>
-<html lang="en">
 {% extends 'base.html' %}
 {% block content %}
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Recorder</title>
-</head>
-<body>
-    <h1>Record Video and Audio</h1>
 
-    <p id="questionText">{{ question.text }}</p> <!-- Display the current question -->
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-200">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-blue-900 mb-2">Video Interview</h2>
+                <p class="text-sm sm:text-base text-gray-600">Record your video response to the question below</p>
+            </div>
+            <div class="hidden md:block">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 bg-red-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-video text-red-600 text-2xl sm:text-3xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <video id="video" autoplay muted></video>
-    <br />
-    <button id="startRecordBtn">Start Recording</button>
-    <button id="stopRecordBtn" disabled>Stop Recording</button>
-    <br />
-    <p id="countdownDisplay">Time Left: 60s</p>
-    <video id="recordedVideo" controls></video>
+    <div class="grid lg:grid-cols-3 gap-4 sm:gap-6">
+        <!-- Main Recording Area -->
+        <div class="lg:col-span-2 space-y-4 sm:space-y-6">
+            <!-- Question Card -->
+            <div class="bg-gradient-to-r from-blue-600 to-blue-900 rounded-lg shadow-md p-4 sm:p-6 text-white">
+                <div class="flex items-start">
+                    <i class="fas fa-question-circle text-2xl sm:text-3xl mr-3 sm:mr-4 mt-1 flex-shrink-0"></i>
+                    <div>
+                        <h3 class="text-lg sm:text-xl font-semibold mb-2">Question</h3>
+                        <p id="questionText" class="text-base sm:text-lg">{{ question.text }}</p>
+                    </div>
+                </div>
+            </div>
 
-    <script>
-        let mediaRecorder;
-        let recordedChunks = [];
-        let recordingTimeout;
-        let countdownInterval;
-        let timeLeft = 60; 
+            <!-- Video Preview -->
+            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">Live Preview</h3>
+                <div class="relative bg-gray-900 rounded-lg overflow-hidden" style="aspect-ratio: 16/9;">
+                    <video id="video" autoplay muted class="w-full h-full object-cover"></video>
+                    <div id="recordingIndicator" class="hidden absolute top-3 sm:top-4 left-3 sm:left-4 bg-red-600 text-white px-2 sm:px-3 py-1 rounded-full flex items-center text-xs sm:text-sm font-semibold">
+                        <span class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
+                        Recording
+                    </div>
+                </div>
+            </div>
 
-        const videoElement = document.getElementById('video');
-        const recordedVideoElement = document.getElementById('recordedVideo');
-        const startRecordBtn = document.getElementById('startRecordBtn');
-        const stopRecordBtn = document.getElementById('stopRecordBtn');
-        const countdownDisplay = document.getElementById('countdownDisplay');
-        const questionId = "{{ question.id }}"; // Pass the question ID to JavaScript
+            <!-- Recording Controls -->
+            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <button id="startRecordBtn" onclick="startRecording()" class="flex-1 bg-emerald-600 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 transition duration-200 font-semibold flex items-center justify-center text-sm sm:text-base shadow-lg hover:shadow-xl">
+                        <i class="fas fa-circle mr-2"></i>
+                        Start Recording
+                    </button>
+                    <button id="stopRecordBtn" disabled onclick="stopRecording()" class="flex-1 bg-red-600 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 transition duration-200 font-semibold flex items-center justify-center text-sm sm:text-base shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-stop mr-2"></i>
+                        Stop Recording
+                    </button>
+                </div>
+            </div>
 
-        async function startRecording() {
+            <!-- Recorded Video Playback -->
+            <div id="playbackSection" class="bg-white rounded-lg shadow-md p-4 sm:p-6 hidden border border-gray-200">
+                <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">Review Your Recording</h3>
+                <div class="relative bg-gray-900 rounded-lg overflow-hidden" style="aspect-ratio: 16/9;">
+                    <video id="recordedVideo" controls class="w-full h-full object-cover"></video>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="lg:col-span-1 space-y-4 sm:space-y-6">
+            <!-- Timer Card -->
+            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">Time Remaining</h3>
+                <div class="text-center">
+                    <div class="w-28 h-28 sm:w-32 sm:h-32 mx-auto bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mb-4">
+                        <p id="countdownDisplay" class="text-3xl sm:text-4xl font-bold text-blue-900">60s</p>
+                    </div>
+                    <p class="text-xs sm:text-sm text-gray-600">Maximum recording time: 60 seconds</p>
+                </div>
+            </div>
+
+            <!-- Instructions Card -->
+            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">
+                    <i class="fas fa-lightbulb text-amber-500 mr-2"></i>
+                    Tips for Success
+                </h3>
+                <ul class="space-y-2 sm:space-y-3 text-xs sm:text-sm text-gray-600">
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
+                        <span>Ensure good lighting and clear audio</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
+                        <span>Look directly at the camera</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
+                        <span>Speak clearly and confidently</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
+                        <span>Structure your answer properly</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
+                        <span>Stay within the time limit</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Progress Card -->
+            <div class="bg-gradient-to-br from-blue-600 to-blue-900 rounded-lg shadow-md p-4 sm:p-6 text-white">
+                <h3 class="text-base sm:text-lg font-semibold mb-2">Interview Progress</h3>
+                <p class="text-xs sm:text-sm opacity-90">Complete all questions to finish your interview</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let mediaRecorder;
+    let recordedChunks = [];
+    let recordingTimeout;
+    let countdownInterval;
+    let timeLeft = 60;
+
+    const videoElement = document.getElementById('video');
+    const recordedVideoElement = document.getElementById('recordedVideo');
+    const startRecordBtn = document.getElementById('startRecordBtn');
+    const stopRecordBtn = document.getElementById('stopRecordBtn');
+    const countdownDisplay = document.getElementById('countdownDisplay');
+    const recordingIndicator = document.getElementById('recordingIndicator');
+    const playbackSection = document.getElementById('playbackSection');
+    const questionId = "{{ question.id }}";
+
+    async function startRecording() {
+        try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             videoElement.srcObject = stream;
             
@@ -49,10 +150,11 @@
                 const blob = new Blob(recordedChunks, { type: 'video/webm' });
                 const videoURL = URL.createObjectURL(blob);
                 recordedVideoElement.src = videoURL;
+                playbackSection.classList.remove('hidden');
 
                 const formData = new FormData();
                 formData.append('video', blob, 'recorded_video.webm');
-                formData.append('question_id', questionId); // Add question_id to form data
+                formData.append('question_id', questionId);
 
                 try {
                     const response = await fetch('/screen/upload/', {
@@ -66,9 +168,9 @@
 
                     const result = await response.json();
                     console.log(result);
-                    alert('Video uploaded successfully!');
-                    // Redirect to next question or refresh the page
-                    window.location.reload(); // Refresh to load the next question
+                    
+                    alert('Video uploaded successfully! Loading next question...');
+                    window.location.reload();
                 } catch (error) {
                     console.error('Error uploading video:', error);
                     alert(`Error uploading video: ${error.message}`);
@@ -80,40 +182,45 @@
             mediaRecorder.start();
             startRecordBtn.disabled = true;
             stopRecordBtn.disabled = false;
+            recordingIndicator.classList.remove('hidden');
 
-            // Start the countdown
             timeLeft = 60;
-            countdownDisplay.textContent = `Time Left: ${timeLeft}s`;
+            countdownDisplay.textContent = `${timeLeft}s`;
 
             countdownInterval = setInterval(() => {
                 timeLeft--;
-                countdownDisplay.textContent = `Time Left: ${timeLeft}s`;
+                countdownDisplay.textContent = `${timeLeft}s`;
+                
+                if (timeLeft <= 10) {
+                    countdownDisplay.classList.add('text-red-600');
+                }
 
                 if (timeLeft <= 0) {
                     clearInterval(countdownInterval);
-                    stopRecording(); // Automatically stop recording
+                    stopRecording();
                 }
             }, 1000);
 
-            // Set a timeout to stop the recording after 1 minute (60000 milliseconds)
             recordingTimeout = setTimeout(stopRecording, 60000);
+        } catch (error) {
+            console.error('Error accessing media devices:', error);
+            alert('Error accessing camera/microphone. Please ensure permissions are granted.');
         }
+    }
 
-        function stopRecording() {
+    function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
             videoElement.srcObject.getTracks().forEach(track => track.stop());
             startRecordBtn.disabled = false;
             stopRecordBtn.disabled = true;
+            recordingIndicator.classList.add('hidden');
+            countdownDisplay.classList.remove('text-red-600');
 
-            // Clear the timeout if the recording is stopped manually
             clearTimeout(recordingTimeout);
             clearInterval(countdownInterval);
         }
+    }
+</script>
 
-        startRecordBtn.addEventListener('click', startRecording);
-        stopRecordBtn.addEventListener('click', stopRecording);
-    </script>
-</body>
 {% endblock %}
-</html>
-

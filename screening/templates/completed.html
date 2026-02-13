@@ -1,19 +1,123 @@
-<!DOCTYPE html>
 {% extends 'base.html' %}
 {% block content %}
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Recorder</title>
-</head>
-<body>
-    
-    <div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
-        <div class=" bg-light">
-            <h4>Your video records are submitted</h4>
+
+<div class="flex items-center justify-center min-h-[calc(100vh-12rem)]">
+    <div class="max-w-2xl w-full px-4">
+        <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 md:p-12 text-center border border-gray-200">
+            <!-- Success Icon -->
+            <div class="mb-6 flex justify-center">
+                <div class="w-20 h-20 sm:w-24 sm:h-24 bg-emerald-100 rounded-full flex items-center justify-center animate-bounce">
+                    <i class="fas fa-check-circle text-emerald-600 text-4xl sm:text-5xl"></i>
+                </div>
+            </div>
+
+            <!-- Title -->
+            <h2 class="text-2xl sm:text-3xl font-bold text-blue-900 mb-4">
+                Video Interview Completed! 🎉
+            </h2>
+
+            <!-- Description -->
+            <p class="text-gray-600 mb-6 text-base sm:text-lg">
+                Congratulations! You have successfully completed all video screening questions.
+            </p>
+
+            <!-- Success Message -->
+            <div class="bg-emerald-50 border-l-4 border-emerald-500 p-4 mb-6 text-left">
+                <div class="flex items-start">
+                    <i class="fas fa-info-circle text-emerald-600 mt-1 mr-3 flex-shrink-0"></i>
+                    <div>
+                        <p class="text-sm font-semibold text-blue-900 mb-2">What's next?</p>
+                        <ul class="text-xs text-gray-600 space-y-1">
+                            <li>• Your video responses have been submitted successfully</li>
+                            <li>• Our AI system will analyze your responses</li>
+                            <li>• You'll receive an email notification with the results</li>
+                            <li>• The hiring team will review your complete application</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="bg-gray-50 rounded-lg p-4 sm:p-6 mb-6 border border-gray-200">
+                <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">Your Journey So Far</h3>
+                <div class="space-y-3 sm:space-y-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+                            <i class="fas fa-check text-white text-sm"></i>
+                        </div>
+                        <div class="ml-4 text-left">
+                            <p class="text-sm font-semibold text-blue-900">Resume Submitted</p>
+                            <p class="text-xs text-gray-600">Successfully uploaded and analyzed</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+                            <i class="fas fa-check text-white text-sm"></i>
+                        </div>
+                        <div class="ml-4 text-left">
+                            <p class="text-sm font-semibold text-blue-900">Resume Approved</p>
+                            <p class="text-xs text-gray-600">Qualified for video interview</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+                            <i class="fas fa-check text-white text-sm"></i>
+                        </div>
+                        <div class="ml-4 text-left">
+                            <p class="text-sm font-semibold text-blue-900">Video Interview Completed</p>
+                            <p class="text-xs text-gray-600">All questions answered</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center animate-pulse">
+                            <i class="fas fa-hourglass-half text-white text-sm"></i>
+                        </div>
+                        <div class="ml-4 text-left">
+                            <p class="text-sm font-semibold text-blue-900">Final Review</p>
+                            <p class="text-xs text-gray-600">Awaiting hiring decision</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Card -->
+            <div class="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+                <div class="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200">
+                    <i class="fas fa-file-alt text-blue-600 text-xl sm:text-2xl mb-2"></i>
+                    <p class="text-xs text-gray-600">Resume</p>
+                    <p class="text-lg font-bold text-blue-900">✓</p>
+                </div>
+                <div class="bg-emerald-50 rounded-lg p-3 sm:p-4 border border-emerald-200">
+                    <i class="fas fa-video text-emerald-600 text-xl sm:text-2xl mb-2"></i>
+                    <p class="text-xs text-gray-600">Video Interview</p>
+                    <p class="text-lg font-bold text-emerald-900">✓</p>
+                </div>
+                <div class="bg-amber-50 rounded-lg p-3 sm:p-4 border border-amber-200">
+                    <i class="fas fa-trophy text-amber-600 text-xl sm:text-2xl mb-2"></i>
+                    <p class="text-xs text-gray-600">Status</p>
+                    <p class="text-sm sm:text-base font-bold text-amber-900">Complete</p>
+                </div>
+            </div>
+
+            <!-- Appreciation Message -->
+            <div class="bg-gradient-to-r from-blue-600 to-blue-900 rounded-lg p-4 sm:p-6 text-white mb-6">
+                <p class="text-base sm:text-lg font-semibold mb-2">Thank You!</p>
+                <p class="text-xs sm:text-sm opacity-90">
+                    We appreciate your time and effort in completing this application. 
+                    We'll be in touch soon with updates on your application status.
+                </p>
+            </div>
+
+            <!-- Action Button -->
+            <a href="{% url 'home' %}" class="inline-block bg-blue-600 text-white py-3 px-6 sm:px-8 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition duration-200 font-semibold shadow-lg hover:shadow-xl">
+                <i class="fas fa-home mr-2"></i>
+                Back to Dashboard
+            </a>
         </div>
-      </div>
-      
-</body>
+    </div>
+</div>
+
 {% endblock %}

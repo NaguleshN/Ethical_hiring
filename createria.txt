@@ -1,0 +1,22 @@
+Web Developer Job Criteria
+Proficient in HTML, CSS, and JavaScript, including frameworks such as React, Angular, or Vue.js.
+
+Experience with server-side languages such as Python, PHP, Ruby, or Node.js.
+
+Understanding of RESTful APIs and integration with front-end applications.
+
+Familiarity with version control systems, particularly Git.
+
+Ability to design responsive and user-friendly web interfaces.
+
+Experience with databases such as MySQL, PostgreSQL, or MongoDB.
+
+Knowledge of security best practices for web applications.
+
+Strong problem-solving and debugging skills.
+
+Good communication and teamwork abilities.
+
+Bachelor’s degree in Computer Science or related field (preferred).
+
+These criteria are widely used across the industry to evaluate candidates for web developer positions.

@@ -1,0 +1,186 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    GOOGLE GEMINI API QUOTA ERROR - SOLUTION                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ WHY IT OCCURRED                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+    User Uploads Resume
+           │
+           ▼
+    ┌─────────────────┐
+    │  Celery Task    │
+    │  get_score()    │
+    └────────┬────────┘
+             │
+             ▼
+    ┌─────────────────┐
+    │  Gemini API     │  ──────►  ❌ 429 Quota Exceeded Error
+    │  (Flash-2.0-exp)│           ❌ Limit: 0 requests/min
+    └─────────────────┘           ❌ Task Failed Immediately
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ HOW IT'S FIXED NOW                                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+    User Uploads Resume
+           │
+           ▼
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  Celery Task with Retry Logic                                   │
+    │  get_score() / generating_questions() / generate_score()        │
+    └───────────────────────┬─────────────────────────────────────────┘
+                            │
+                            ▼
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  execute_query_with_retry() / call_llm_with_retry()             │
+    │  - Max retries: 3                                               │
+    │  - Exponential backoff: 2s, 4s, 8s                              │
+    │  - Parses retry delay from API error                            │
+    └───────────────────────┬─────────────────────────────────────────┘
+                            │
+                            ▼
+              ┌─────────────────────────┐
+              │  Gemini API (1.5-flash) │  ──► More stable, better quota
+              │  (Configurable via .env)│
+              └───────────┬─────────────┘
+                          │
+         ┌────────────────┴────────────────┐
+         │                                  │
+         ▼                                  ▼
+    ✅ Success!                    ❌ 429 Rate Limit Error
+         │                                  │
+         │                                  ▼
+         │                         Wait for retry delay
+         │                         (parsed from error)
+         │                                  │
+         │                                  ▼
+         │                         ┌────────────────┐
+         │                         │  Retry Attempt │
+         │                         │  (up to 3x)    │
+         │                         └───────┬────────┘
+         │                                 │
+         │                    ┌────────────┴────────────┐
+         │                    │                          │
+         │                    ▼                          ▼
+         │               ✅ Success!              Still failing after
+         │                                        3 retries?
+         │                                              │
+         │                                              ▼
+         │                                    ┌──────────────────┐
+         │                                    │ Graceful Fallback│
+         │                                    │ - Set default    │
+         │                                    │   scores         │
+         │                                    │ - Mark as pending│
+         │                                    │ - Log helpful    │
+         │                                    │   error message  │
+         │                                    └──────────────────┘
+         │                                              │
+         └──────────────────────────────────────────────┘
+                                    │
+                                    ▼
+                          Resume Processed Successfully
+                          (Either with real scores or
+                           fallback values for manual review)
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ KEY IMPROVEMENTS                                                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+1. RETRY LOGIC
+   ┌──────────────────────────────────────────────────────────┐
+   │ Attempt 1: Call API → 429 Error → Wait 2 seconds         │
+   │ Attempt 2: Call API → 429 Error → Wait 4 seconds         │
+   │ Attempt 3: Call API → 429 Error → Wait 8 seconds         │
+   │ All Failed: Use graceful fallback                        │
+   └──────────────────────────────────────────────────────────┘
+
+2. STABLE MODEL
+   ┌──────────────────────────────────────────────────────────┐
+   │ OLD: gemini-2.0-flash-exp (experimental, low quota)      │
+   │ NEW: gemini-1.5-flash (stable, better quota)             │
+   │ Configurable via: GEMINI_MODEL=gemini-1.5-flash in .env  │
+   └──────────────────────────────────────────────────────────┘
+
+3. INTELLIGENT WAITING
+   ┌──────────────────────────────────────────────────────────┐
+   │ API says: "Please retry in 57.846579496s"               │
+   │ Code waits: 59.8 seconds (57.8s + 2s buffer)            │
+   │ Prevents immediate re-hitting of rate limit             │
+   └──────────────────────────────────────────────────────────┘
+
+4. GRACEFUL FALLBACKS
+   ┌──────────────────────────────────────────────────────────┐
+   │ get_score()           → Set default scores (all 0)       │
+   │                         Mark status as "pending"         │
+   │                                                           │
+   │ generating_questions() → Create 3 generic questions      │
+   │                                                           │
+   │ generate_score()      → Skip remaining videos            │
+   └──────────────────────────────────────────────────────────┘
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ CONFIGURATION                                                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+File: .env
+┌──────────────────────────────────────────────────────────┐
+│ GOOGLE_API_KEY=your_api_key_here                         │
+│ GEMINI_MODEL=gemini-1.5-flash  ← NEW! (Stable model)     │
+└──────────────────────────────────────────────────────────┘
+
+Model Options:
+├── gemini-1.5-flash      (Recommended: Fast, stable, good quota)
+├── gemini-1.5-pro        (Higher quality, more expensive)
+└── gemini-2.0-flash-exp  (Experimental, may have lower quota)
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ WHAT TO DO NOW                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+1. Restart Celery Worker
+   ┌────────────────────────────────────────────────────────┐
+   │ $ cd /Users/nagulesh/Downloads/Hiring_platform         │
+   │ $ celery -A Hiring_platform worker --loglevel=info     │
+   └────────────────────────────────────────────────────────┘
+
+2. Wait 60 seconds (for quota reset)
+   ┌────────────────────────────────────────────────────────┐
+   │ Free tier quotas reset every minute                   │
+   │ Check usage: https://ai.dev/usage?tab=rate-limit      │
+   └────────────────────────────────────────────────────────┘
+
+3. Test by uploading a resume
+   ┌────────────────────────────────────────────────────────┐
+   │ Watch Celery logs for retry messages:                 │
+   │ ⚠️  Rate limit hit. Retrying in X seconds...          │
+   │ ✅ get_score task completed                           │
+   └────────────────────────────────────────────────────────┘
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ MONITORING                                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Success Messages:
+✅ Video score updated: 85.0
+✅ get_score task completed
+✅ Successfully scored the video
+
+Retry Messages:
+⚠️  Rate limit hit on attempt 1/3. Retrying in 2.0 seconds...
+⚠️  Rate limit hit on attempt 2/3. Retrying in 4.0 seconds...
+⚠️  Query timed out after 60 seconds on attempt 3/3
+
+Error Messages (with solutions):
+❌ Max retries reached. Still hitting rate limits.
+💡 Solutions:
+   1. Wait for quota to reset (check: https://ai.dev/usage?tab=rate-limit)
+   2. Use a different API key or upgrade to paid tier
+   3. Switch to a different model in .env (GEMINI_MODEL=gemini-1.5-flash)
+

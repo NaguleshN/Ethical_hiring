@@ -1,10 +1,87 @@
 {% extends 'base.html' %}
 {% block content %}
 
+<div class="flex items-center justify-center min-h-[calc(100vh-12rem)]">
+    <div class="max-w-2xl w-full px-4">
+        <div class="bg-white rounded-lg shadow-xl p-6 sm:p-8 md:p-12 text-center border border-gray-200">
+            <!-- Icon -->
+            <div class="mb-6 flex justify-center">
+                <div class="w-20 h-20 sm:w-24 sm:h-24 bg-blue-100 rounded-full flex items-center justify-center animate-pulse">
+                    <i class="fas fa-video text-blue-600 text-3xl sm:text-4xl"></i>
+                </div>
+            </div>
 
-<div class="d-flex justify-content-center align-items-center" style="height: 100vh;">
-    <div class=" bg-light">
-        <h4>Your evaluation is in process</h4>
+            <!-- Title -->
+            <h2 class="text-2xl sm:text-3xl font-bold text-blue-900 mb-4">
+                Video Interview Evaluation in Process
+            </h2>
+
+            <!-- Description -->
+            <p class="text-gray-600 mb-6 text-base sm:text-lg">
+                Your video responses are being analyzed by our AI system. This typically takes a few minutes.
+            </p>
+
+            <!-- Progress Animation -->
+            <div class="mb-8">
+                <div class="relative pt-1">
+                    <div class="flex mb-2 items-center justify-between">
+                        <div>
+                            <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-900 bg-blue-200">
+                                Processing
+                            </span>
+                        </div>
+                    </div>
+                    <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
+                        <div class="progress-bar shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-600"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Information -->
+            <div class="bg-emerald-50 border-l-4 border-emerald-500 p-4 mb-6 text-left">
+                <div class="flex items-start">
+                    <i class="fas fa-info-circle text-emerald-600 mt-1 mr-3 flex-shrink-0"></i>
+                    <div>
+                        <p class="text-sm font-semibold text-blue-900 mb-2">What we're analyzing:</p>
+                        <ul class="text-xs text-gray-600 space-y-1">
+                            <li>• Content relevance and accuracy</li>
+                            <li>• Communication clarity</li>
+                            <li>• Technical knowledge demonstration</li>
+                            <li>• Overall presentation quality</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <button onclick="location.reload()" class="bg-blue-600 text-white py-3 px-6 sm:px-8 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition duration-200 font-semibold shadow-lg hover:shadow-xl">
+                <i class="fas fa-sync-alt mr-2"></i>
+                Refresh Status
+            </button>
+
+            <p class="text-xs sm:text-sm text-gray-500 mt-4">
+                You'll be notified via email once the evaluation is complete
+            </p>
+        </div>
     </div>
-  </div>
+</div>
+
+<style>
+    @keyframes progress {
+        0% { width: 0%; }
+        100% { width: 100%; }
+    }
+    
+    .progress-bar {
+        animation: progress 3s ease-in-out infinite;
+    }
+</style>
+
+<script>
+    // Auto-refresh every 20 seconds
+    setTimeout(function() {
+        location.reload();
+    }, 20000);
+</script>
+
 {% endblock %}
