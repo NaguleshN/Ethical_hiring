@@ -30,7 +30,7 @@ defusedxml==0.8.0rc2
 pillow==10.4.0
 
 # PDF processing
-pypdf==4.3.1
+pypdf
 
 # Data processing
 pandas==2.2.2
@@ -125,3 +125,8 @@ torch==2.9.0
 tqdm==4.67.1
 click==8.3.0
 cachetools==5.5.2
+
+# Face verification (DeepFace)
+deepface>=0.0.90
+easyocr>=1.7.1
+tf-keras>=2.20.1

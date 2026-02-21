@@ -2,123 +2,536 @@
 {% block content %}
 
 <div class="max-w-6xl mx-auto">
-    <!-- Header -->
-    <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-200">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-                <h2 class="text-2xl sm:text-3xl font-bold text-blue-900 mb-2">Video Interview</h2>
-                <p class="text-sm sm:text-base text-gray-600">Record your video response to the question below</p>
+
+    <!-- Face Verification Overlay -->
+    {% if not face_verified %}
+    <div id="faceVerificationOverlay" class="mb-6">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-200">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-blue-900 mb-2">Identity Verification</h2>
+                    <p class="text-sm sm:text-base text-gray-600">Verify your identity before starting the interview</p>
+                </div>
+                <div class="hidden md:block">
+                    <div class="w-16 h-16 sm:w-20 sm:h-20 bg-amber-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user-shield text-amber-600 text-2xl sm:text-3xl"></i>
+                    </div>
+                </div>
             </div>
-            <div class="hidden md:block">
-                <div class="w-16 h-16 sm:w-20 sm:h-20 bg-red-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-video text-red-600 text-2xl sm:text-3xl"></i>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-200">
+            <div class="flex items-center justify-center gap-4">
+                <div id="step1Indicator" class="flex items-center">
+                    <div
+                        class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                        1</div>
+                    <span class="ml-2 text-sm font-semibold text-blue-900">Upload Aadhaar</span>
+                </div>
+                <div class="w-12 h-0.5 bg-gray-300" id="stepConnector"></div>
+                <div id="step2Indicator" class="flex items-center opacity-50">
+                    <div class="w-10 h-10 bg-gray-300 text-white rounded-full flex items-center justify-center font-bold text-sm"
+                        id="step2Circle">2</div>
+                    <span class="ml-2 text-sm font-semibold text-gray-400" id="step2Label">Face Verify</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-4 sm:gap-6">
+
+            <!-- STEP 1: Aadhaar Upload -->
+            <div id="aadhaarUploadSection" {% if has_face_ref %}class="hidden" {% endif %}>
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                    <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">
+                        <i class="fas fa-id-card mr-2 text-amber-500"></i>Step 1: Upload Aadhaar Card
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-4">Upload a clear image of your Aadhaar card. We'll extract your
+                        photo for identity verification.</p>
+
+                    <div class="relative mb-4">
+                        <input type="file" id="aadhaarFileInput" accept="image/*" class="hidden"
+                            onchange="updateAadhaarPreview(this)">
+                        <label for="aadhaarFileInput"
+                            class="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-amber-50 hover:border-amber-500 transition duration-200">
+                            <div class="flex flex-col items-center justify-center py-4 px-4">
+                                <i class="fas fa-cloud-upload-alt text-4xl text-amber-500 mb-3"></i>
+                                <p class="text-sm text-gray-700 text-center">
+                                    <span class="font-semibold text-blue-900">Click to upload</span> your Aadhaar card
+                                </p>
+                                <p class="text-xs text-gray-500 mt-1">JPG, PNG (clear, readable image)</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Aadhaar Preview -->
+                    <div id="aadhaarPreview" class="hidden mb-4">
+                        <img id="aadhaarPreviewImg"
+                            class="w-full h-40 object-contain rounded-lg border border-gray-200" />
+                        <p id="aadhaarFileName" class="text-xs text-emerald-600 font-medium mt-2 text-center"></p>
+                    </div>
+
+                    <button id="uploadAadhaarBtn" onclick="uploadAadhaarCard()" disabled
+                        class="w-full bg-amber-500 text-white py-3 px-4 rounded-lg hover:bg-amber-600 transition duration-200 font-semibold flex items-center justify-center text-sm shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-upload mr-2"></i>Upload & Extract Face
+                    </button>
+
+                    <!-- Upload Status -->
+                    <div id="aadhaarUploadStatus" class="hidden mt-4"></div>
+                    <div id="aadhaarLoading" class="hidden mt-4">
+                        <div class="flex items-center justify-center">
+                            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600 mr-3"></div>
+                            <span class="text-gray-600 text-sm">Processing Aadhaar card...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: Webcam Capture & Verify -->
+            <div id="webcamVerifySection" {% if not has_face_ref %}class="hidden" {% endif %}>
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                    <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">
+                        <i class="fas fa-camera mr-2 text-blue-600"></i>Step 2: Verify Your Face
+                    </h3>
+                    <div class="relative bg-gray-900 rounded-lg overflow-hidden mb-4" style="aspect-ratio: 4/3;">
+                        <video id="verifyVideo" autoplay muted playsinline class="w-full h-full object-cover"></video>
+                        <canvas id="verifyCanvas" class="hidden"></canvas>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="startCameraBtn" onclick="startVerificationCamera()"
+                            class="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold flex items-center justify-center text-sm shadow-lg">
+                            <i class="fas fa-video mr-2"></i>Start Camera
+                        </button>
+                        <button id="captureVerifyBtn" onclick="captureAndVerify()" disabled
+                            class="flex-1 bg-emerald-600 text-white py-3 px-4 rounded-lg hover:bg-emerald-700 transition duration-200 font-semibold flex items-center justify-center text-sm shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-check-circle mr-2"></i>Capture & Verify
+                        </button>
+                    </div>
+                    <button onclick="backToStep1()"
+                        class="w-full mt-3 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-amber-50 hover:text-amber-700 transition duration-200 font-medium flex items-center justify-center text-sm border border-gray-300">
+                        <i class="fas fa-arrow-left mr-2"></i>Re-upload Aadhaar Card
+                    </button>
+                </div>
+            </div>
+
+            <!-- Info & Results Panel -->
+            <div class="space-y-4">
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                    <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">
+                        <i class="fas fa-info-circle mr-2 text-blue-600"></i>How It Works
+                    </h3>
+                    <ol class="space-y-3 text-sm text-gray-600">
+                        <li class="flex items-start">
+                            <span
+                                class="flex-shrink-0 w-6 h-6 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">1</span>
+                            <span>Upload a clear photo of your <strong>Aadhaar card</strong></span>
+                        </li>
+                        <li class="flex items-start">
+                            <span
+                                class="flex-shrink-0 w-6 h-6 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">2</span>
+                            <span>We extract your <strong>face from the card</strong> using AI</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span
+                                class="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">3</span>
+                            <span>Take a <strong>live webcam photo</strong> for comparison</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span
+                                class="flex-shrink-0 w-6 h-6 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">✓</span>
+                            <span>Minimum <strong>80% match</strong> required to proceed</span>
+                        </li>
+                    </ol>
+                </div>
+
+                <!-- Result Card -->
+                <div id="verificationResult"
+                    class="hidden bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                    <div id="resultContent"></div>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="verifyLoading" class="hidden bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                    <div class="flex items-center justify-center">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-3"></div>
+                        <span class="text-gray-600 font-medium">Analyzing face...</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    {% endif %}
 
-    <div class="grid lg:grid-cols-3 gap-4 sm:gap-6">
-        <!-- Main Recording Area -->
-        <div class="lg:col-span-2 space-y-4 sm:space-y-6">
-            <!-- Question Card -->
-            <div class="bg-gradient-to-r from-blue-600 to-blue-900 rounded-lg shadow-md p-4 sm:p-6 text-white">
-                <div class="flex items-start">
-                    <i class="fas fa-question-circle text-2xl sm:text-3xl mr-3 sm:mr-4 mt-1 flex-shrink-0"></i>
-                    <div>
-                        <h3 class="text-lg sm:text-xl font-semibold mb-2">Question</h3>
-                        <p id="questionText" class="text-base sm:text-lg">{{ question.text }}</p>
+    <!-- Interview Section (hidden until verified) -->
+    <div id="interviewSection" {% if not face_verified %}class="hidden" {% endif %}>
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6 border border-gray-200">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl sm:text-3xl font-bold text-blue-900 mb-2">Video Interview</h2>
+                    <p class="text-sm sm:text-base text-gray-600">Record your video response to the question below</p>
+                </div>
+                <div class="hidden md:block">
+                    <div class="w-16 h-16 sm:w-20 sm:h-20 bg-red-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-video text-red-600 text-2xl sm:text-3xl"></i>
                     </div>
-                </div>
-            </div>
-
-            <!-- Video Preview -->
-            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
-                <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">Live Preview</h3>
-                <div class="relative bg-gray-900 rounded-lg overflow-hidden" style="aspect-ratio: 16/9;">
-                    <video id="video" autoplay muted class="w-full h-full object-cover"></video>
-                    <div id="recordingIndicator" class="hidden absolute top-3 sm:top-4 left-3 sm:left-4 bg-red-600 text-white px-2 sm:px-3 py-1 rounded-full flex items-center text-xs sm:text-sm font-semibold">
-                        <span class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
-                        Recording
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recording Controls -->
-            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
-                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                    <button id="startRecordBtn" onclick="startRecording()" class="flex-1 bg-emerald-600 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 transition duration-200 font-semibold flex items-center justify-center text-sm sm:text-base shadow-lg hover:shadow-xl">
-                        <i class="fas fa-circle mr-2"></i>
-                        Start Recording
-                    </button>
-                    <button id="stopRecordBtn" disabled onclick="stopRecording()" class="flex-1 bg-red-600 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 transition duration-200 font-semibold flex items-center justify-center text-sm sm:text-base shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed">
-                        <i class="fas fa-stop mr-2"></i>
-                        Stop Recording
-                    </button>
-                </div>
-            </div>
-
-            <!-- Recorded Video Playback -->
-            <div id="playbackSection" class="bg-white rounded-lg shadow-md p-4 sm:p-6 hidden border border-gray-200">
-                <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">Review Your Recording</h3>
-                <div class="relative bg-gray-900 rounded-lg overflow-hidden" style="aspect-ratio: 16/9;">
-                    <video id="recordedVideo" controls class="w-full h-full object-cover"></video>
                 </div>
             </div>
         </div>
 
-        <!-- Sidebar -->
-        <div class="lg:col-span-1 space-y-4 sm:space-y-6">
-            <!-- Timer Card -->
-            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
-                <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">Time Remaining</h3>
-                <div class="text-center">
-                    <div class="w-28 h-28 sm:w-32 sm:h-32 mx-auto bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mb-4">
-                        <p id="countdownDisplay" class="text-3xl sm:text-4xl font-bold text-blue-900">60s</p>
+        <div class="grid lg:grid-cols-3 gap-4 sm:gap-6">
+            <!-- Main Recording Area -->
+            <div class="lg:col-span-2 space-y-4 sm:space-y-6">
+                <!-- Question Card -->
+                <div class="bg-gradient-to-r from-blue-600 to-blue-900 rounded-lg shadow-md p-4 sm:p-6 text-white">
+                    <div class="flex items-start">
+                        <i class="fas fa-question-circle text-2xl sm:text-3xl mr-3 sm:mr-4 mt-1 flex-shrink-0"></i>
+                        <div>
+                            <h3 class="text-lg sm:text-xl font-semibold mb-2">Question</h3>
+                            <p id="questionText" class="text-base sm:text-lg">{{ question.text }}</p>
+                        </div>
                     </div>
-                    <p class="text-xs sm:text-sm text-gray-600">Maximum recording time: 60 seconds</p>
+                </div>
+
+                <!-- Video Preview -->
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                    <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">Live Preview</h3>
+                    <div class="relative bg-gray-900 rounded-lg overflow-hidden" style="aspect-ratio: 16/9;">
+                        <video id="video" autoplay muted class="w-full h-full object-cover"></video>
+                        <div id="recordingIndicator"
+                            class="hidden absolute top-3 sm:top-4 left-3 sm:left-4 bg-red-600 text-white px-2 sm:px-3 py-1 rounded-full flex items-center text-xs sm:text-sm font-semibold">
+                            <span class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></span>
+                            Recording
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recording Controls -->
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                    <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                        <button id="startRecordBtn" onclick="startRecording()"
+                            class="flex-1 bg-emerald-600 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 transition duration-200 font-semibold flex items-center justify-center text-sm sm:text-base shadow-lg hover:shadow-xl">
+                            <i class="fas fa-circle mr-2"></i>
+                            Start Recording
+                        </button>
+                        <button id="stopRecordBtn" disabled onclick="stopRecording()"
+                            class="flex-1 bg-red-600 text-white py-3 sm:py-4 px-4 sm:px-6 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 transition duration-200 font-semibold flex items-center justify-center text-sm sm:text-base shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fas fa-stop mr-2"></i>
+                            Stop Recording
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recorded Video Playback -->
+                <div id="playbackSection"
+                    class="bg-white rounded-lg shadow-md p-4 sm:p-6 hidden border border-gray-200">
+                    <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">Review Your Recording</h3>
+                    <div class="relative bg-gray-900 rounded-lg overflow-hidden" style="aspect-ratio: 16/9;">
+                        <video id="recordedVideo" controls class="w-full h-full object-cover"></video>
+                    </div>
                 </div>
             </div>
 
-            <!-- Instructions Card -->
-            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
-                <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">
-                    <i class="fas fa-lightbulb text-amber-500 mr-2"></i>
-                    Tips for Success
-                </h3>
-                <ul class="space-y-2 sm:space-y-3 text-xs sm:text-sm text-gray-600">
-                    <li class="flex items-start">
-                        <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
-                        <span>Ensure good lighting and clear audio</span>
-                    </li>
-                    <li class="flex items-start">
-                        <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
-                        <span>Look directly at the camera</span>
-                    </li>
-                    <li class="flex items-start">
-                        <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
-                        <span>Speak clearly and confidently</span>
-                    </li>
-                    <li class="flex items-start">
-                        <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
-                        <span>Structure your answer properly</span>
-                    </li>
-                    <li class="flex items-start">
-                        <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
-                        <span>Stay within the time limit</span>
-                    </li>
-                </ul>
-            </div>
+            <!-- Sidebar -->
+            <div class="lg:col-span-1 space-y-4 sm:space-y-6">
+                <!-- Timer Card -->
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                    <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">Time Remaining</h3>
+                    <div class="text-center">
+                        <div
+                            class="w-28 h-28 sm:w-32 sm:h-32 mx-auto bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mb-4">
+                            <p id="countdownDisplay" class="text-3xl sm:text-4xl font-bold text-blue-900">60s</p>
+                        </div>
+                        <p class="text-xs sm:text-sm text-gray-600">Maximum recording time: 60 seconds</p>
+                    </div>
+                </div>
 
-            <!-- Progress Card -->
-            <div class="bg-gradient-to-br from-blue-600 to-blue-900 rounded-lg shadow-md p-4 sm:p-6 text-white">
-                <h3 class="text-base sm:text-lg font-semibold mb-2">Interview Progress</h3>
-                <p class="text-xs sm:text-sm opacity-90">Complete all questions to finish your interview</p>
+                <!-- Instructions Card -->
+                <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 border border-gray-200">
+                    <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-4">
+                        <i class="fas fa-lightbulb text-amber-500 mr-2"></i>
+                        Tips for Success
+                    </h3>
+                    <ul class="space-y-2 sm:space-y-3 text-xs sm:text-sm text-gray-600">
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
+                            <span>Ensure good lighting and clear audio</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
+                            <span>Look directly at the camera</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
+                            <span>Speak clearly and confidently</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
+                            <span>Structure your answer properly</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check-circle text-emerald-500 mr-2 mt-1 flex-shrink-0"></i>
+                            <span>Stay within the time limit</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Progress Card -->
+                <div class="bg-gradient-to-br from-blue-600 to-blue-900 rounded-lg shadow-md p-4 sm:p-6 text-white">
+                    <h3 class="text-base sm:text-lg font-semibold mb-2">Interview Progress</h3>
+                    <p class="text-xs sm:text-sm opacity-90">Complete all questions to finish your interview</p>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+    // ═══════════════════════════════════════════
+    // STEP 1: Aadhaar Card Upload
+    // ═══════════════════════════════════════════
+
+    function updateAadhaarPreview(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                document.getElementById('aadhaarPreviewImg').src = e.target.result;
+                document.getElementById('aadhaarPreview').classList.remove('hidden');
+                document.getElementById('aadhaarFileName').textContent = `Selected: ${input.files[0].name}`;
+                document.getElementById('uploadAadhaarBtn').disabled = false;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    async function uploadAadhaarCard() {
+        const fileInput = document.getElementById('aadhaarFileInput');
+        const loading = document.getElementById('aadhaarLoading');
+        const statusDiv = document.getElementById('aadhaarUploadStatus');
+        const uploadBtn = document.getElementById('uploadAadhaarBtn');
+
+        if (!fileInput.files[0]) {
+            alert('Please select an Aadhaar card image first.');
+            return;
+        }
+
+        // Show loading
+        loading.classList.remove('hidden');
+        statusDiv.classList.add('hidden');
+        uploadBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('aadhaar_card', fileInput.files[0]);
+
+        try {
+            const response = await fetch('/screen/upload_aadhaar/', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            loading.classList.add('hidden');
+            statusDiv.classList.remove('hidden');
+
+            if (result.status === 'success') {
+                statusDiv.innerHTML = `
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+                        <i class="fas fa-check-circle text-emerald-600 text-xl mb-1"></i>
+                        <p class="text-sm font-semibold text-emerald-700">${result.message}</p>
+                        <p class="text-xs text-gray-500 mt-1">Proceeding to face verification...</p>
+                    </div>
+                `;
+
+                // Transition to Step 2
+                setTimeout(() => {
+                    moveToStep2();
+                }, 1500);
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                        <i class="fas fa-exclamation-circle text-red-600 text-xl mb-1"></i>
+                        <p class="text-sm font-semibold text-red-700">${result.message}</p>
+                    </div>
+                `;
+                uploadBtn.disabled = false;
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            statusDiv.classList.remove('hidden');
+            statusDiv.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+                    <i class="fas fa-exclamation-circle text-red-600 text-xl mb-1"></i>
+                    <p class="text-sm font-semibold text-red-700">Upload failed: ${error.message}</p>
+                </div>
+            `;
+            uploadBtn.disabled = false;
+        }
+    }
+
+    function moveToStep2() {
+        // Hide step 1, show step 2
+        document.getElementById('aadhaarUploadSection').classList.add('hidden');
+        document.getElementById('webcamVerifySection').classList.remove('hidden');
+
+        // Update step indicators
+        document.getElementById('step2Indicator').classList.remove('opacity-50');
+        document.getElementById('step2Circle').classList.remove('bg-gray-300');
+        document.getElementById('step2Circle').classList.add('bg-blue-600');
+        document.getElementById('step2Label').classList.remove('text-gray-400');
+        document.getElementById('step2Label').classList.add('text-blue-900');
+        document.getElementById('stepConnector').classList.remove('bg-gray-300');
+        document.getElementById('stepConnector').classList.add('bg-blue-600');
+    }
+
+    function backToStep1() {
+        // Stop webcam if running
+        if (verifyStream) {
+            verifyStream.getTracks().forEach(track => track.stop());
+            verifyStream = null;
+        }
+
+        // Show step 1, hide step 2
+        document.getElementById('aadhaarUploadSection').classList.remove('hidden');
+        document.getElementById('webcamVerifySection').classList.add('hidden');
+
+        // Reset step indicators
+        document.getElementById('step2Indicator').classList.add('opacity-50');
+        document.getElementById('step2Circle').classList.remove('bg-blue-600');
+        document.getElementById('step2Circle').classList.add('bg-gray-300');
+        document.getElementById('step2Label').classList.remove('text-blue-900');
+        document.getElementById('step2Label').classList.add('text-gray-400');
+        document.getElementById('stepConnector').classList.remove('bg-blue-600');
+        document.getElementById('stepConnector').classList.add('bg-gray-300');
+
+        // Reset file input and preview
+        document.getElementById('aadhaarFileInput').value = '';
+        document.getElementById('aadhaarPreview').classList.add('hidden');
+        document.getElementById('uploadAadhaarBtn').disabled = true;
+        document.getElementById('aadhaarUploadStatus').classList.add('hidden');
+
+        // Reset camera button
+        document.getElementById('startCameraBtn').disabled = false;
+        document.getElementById('startCameraBtn').classList.remove('opacity-50');
+        document.getElementById('captureVerifyBtn').disabled = true;
+
+        // Hide verification result
+        document.getElementById('verificationResult').classList.add('hidden');
+    }
+
+    // If user already has a face reference, start at step 2
+    {% if has_face_ref %}
+    document.addEventListener('DOMContentLoaded', function () {
+        moveToStep2();
+    });
+    {% endif %}
+
+
+    // ═══════════════════════════════════════════
+    // STEP 2: Face Verification Logic
+    // ═══════════════════════════════════════════
+    let verifyStream = null;
+
+    async function startVerificationCamera() {
+        try {
+            const video = document.getElementById('verifyVideo');
+            verifyStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = verifyStream;
+
+            document.getElementById('startCameraBtn').disabled = true;
+            document.getElementById('startCameraBtn').classList.add('opacity-50');
+            document.getElementById('captureVerifyBtn').disabled = false;
+        } catch (error) {
+            alert('Error accessing camera. Please ensure camera permissions are granted.');
+            console.error('Camera error:', error);
+        }
+    }
+
+    async function captureAndVerify() {
+        const video = document.getElementById('verifyVideo');
+        const canvas = document.getElementById('verifyCanvas');
+        const loading = document.getElementById('verifyLoading');
+        const resultDiv = document.getElementById('verificationResult');
+        const captureBtn = document.getElementById('captureVerifyBtn');
+
+        // Capture frame from video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+        // Show loading
+        loading.classList.remove('hidden');
+        resultDiv.classList.add('hidden');
+        captureBtn.disabled = true;
+
+        try {
+            const response = await fetch('/screen/verify_face/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: imageData })
+            });
+
+            const result = await response.json();
+            loading.classList.add('hidden');
+            resultDiv.classList.remove('hidden');
+
+            const resultContent = document.getElementById('resultContent');
+
+            if (result.verified) {
+                resultContent.innerHTML = `
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-check-circle text-emerald-600 text-3xl"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-emerald-700 mb-1">Identity Verified!</h4>
+                        <p class="text-sm text-gray-600 mb-1">Match: <strong>${result.similarity.toFixed(1)}%</strong></p>
+                        <p class="text-xs text-gray-500">Redirecting to interview...</p>
+                    </div>
+                `;
+
+                // Stop verification camera
+                if (verifyStream) {
+                    verifyStream.getTracks().forEach(track => track.stop());
+                }
+
+                // Show interview after a brief delay
+                setTimeout(() => {
+                    document.getElementById('faceVerificationOverlay').classList.add('hidden');
+                    document.getElementById('interviewSection').classList.remove('hidden');
+                }, 2000);
+            } else {
+                resultContent.innerHTML = `
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-times-circle text-red-600 text-3xl"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-red-700 mb-1">Verification Failed</h4>
+                        <p class="text-sm text-gray-600 mb-1">Match: <strong>${result.similarity ? result.similarity.toFixed(1) : 0}%</strong> (minimum 80% required)</p>
+                        <p class="text-xs text-gray-500">${result.message || 'Please try again with better lighting and face positioning.'}</p>
+                    </div>
+                `;
+                captureBtn.disabled = false;
+            }
+        } catch (error) {
+            loading.classList.add('hidden');
+            resultDiv.classList.remove('hidden');
+            document.getElementById('resultContent').innerHTML = `
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-exclamation-triangle text-amber-600 text-3xl"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-amber-700 mb-1">Error</h4>
+                    <p class="text-sm text-gray-600">${error.message}</p>
+                </div>
+            `;
+            captureBtn.disabled = false;
+        }
+    }
+
+    // ═══════════════════════════════════════════
+    // Video Recording Logic (original)
+    // ═══════════════════════════════════════════
     let mediaRecorder;
     let recordedChunks = [];
     let recordingTimeout;
@@ -138,15 +551,15 @@
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             videoElement.srcObject = stream;
-            
+
             mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.ondataavailable = function(event) {
+            mediaRecorder.ondataavailable = function (event) {
                 if (event.data.size > 0) {
                     recordedChunks.push(event.data);
                 }
             };
 
-            mediaRecorder.onstop = async function() {
+            mediaRecorder.onstop = async function () {
                 const blob = new Blob(recordedChunks, { type: 'video/webm' });
                 const videoURL = URL.createObjectURL(blob);
                 recordedVideoElement.src = videoURL;
@@ -168,7 +581,7 @@
 
                     const result = await response.json();
                     console.log(result);
-                    
+
                     alert('Video uploaded successfully! Loading next question...');
                     window.location.reload();
                 } catch (error) {
@@ -190,7 +603,7 @@
             countdownInterval = setInterval(() => {
                 timeLeft--;
                 countdownDisplay.textContent = `${timeLeft}s`;
-                
+
                 if (timeLeft <= 10) {
                     countdownDisplay.classList.add('text-red-600');
                 }
