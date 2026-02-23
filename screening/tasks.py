@@ -5,18 +5,17 @@ from django.conf import settings
 from .models import VideoRecording
 from google.cloud import speech_v1p1beta1 as speech
 
-# SpeechRecognition has Python 3.13 compatibility issues:
-# - aifc module was removed in Python 3.13
-# - audioop module was removed in Python 3.13
-# SpeechRecognition library is not compatible with Python 3.13+
-# We'll skip this fallback method and rely on Google Cloud Speech API or AssemblyAI
+# SpeechRecognition works on Python 3.12; not compatible with Python 3.13+ (aifc/audioop removed).
+# When available, we use it first (free, no API key) then fall back to Google Cloud / AssemblyAI.
+import sys
 try:
     import speech_recognition as sr
     SPEECH_RECOGNITION_AVAILABLE = True
-except (ImportError, ModuleNotFoundError) as e:
-    # Expected in Python 3.13+ - aifc and audioop modules were removed
+except (ImportError, ModuleNotFoundError) as _e:
     SPEECH_RECOGNITION_AVAILABLE = False
     sr = None
+    # Log once so Celery workers show why (e.g. Python 3.13 or missing package)
+    print(f"[screening.tasks] SpeechRecognition not loaded (Python {sys.version_info.major}.{sys.version_info.minor}): {_e}")
 # from pydub import AudioSegment  # Commented out due to Python 3.13 compatibility issues
 import io
 from assemblyai import Transcriber
@@ -149,7 +148,8 @@ def extract_audio_from_video(video_id):
 @shared_task
 def convert_speech_to_text(recording_id):
     """
-    Convert speech to text using Google Cloud Speech API with fallback to AssemblyAI
+    Convert speech to text. On Python 3.12: tries SpeechRecognition first (free),
+    then Google Cloud Speech API, then AssemblyAI.
     """
     temp_wav_path = None
     transcription_success = False
@@ -192,179 +192,141 @@ def convert_speech_to_text(recording_id):
         else:
             audio_file = audio_file_path
 
-        # Method 1: Try Google Cloud Speech API
-        print("Attempting transcription with Google Cloud Speech API...")
-        try:
-            # Check for Google Cloud credentials
-            google_creds = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-            if not google_creds and not os.path.exists(os.path.expanduser('~/.config/gcloud/application_default_credentials.json')):
-                print("⚠️ Warning: Google Cloud credentials not found. Trying fallback method...")
-                raise Exception("Google Cloud credentials not configured")
-            
-            client = speech.SpeechClient()
-            
-            with open(audio_file, 'rb') as audio_file_obj:
-                content = audio_file_obj.read()
+        def _try_speech_recognition():
+            """Use SpeechRecognition library (free, works on Python 3.12). Returns transcript or None."""
+            if not SPEECH_RECOGNITION_AVAILABLE or sr is None:
+                return None
+            speech_audio_file = audio_file
+            if not audio_file.endswith('.wav'):
+                if temp_wav_path and os.path.exists(temp_wav_path):
+                    speech_audio_file = temp_wav_path
+                else:
+                    speech_wav_path = f'temp_speech_{recording_id}_{int(time.time())}.wav'
+                    try:
+                        ffmpeg.input(audio_file).output(speech_wav_path, acodec='pcm_s16le', ar=16000).run(overwrite_output=True, quiet=True)
+                        speech_audio_file = speech_wav_path
+                    except Exception:
+                        return None
+            try:
+                recognizer = sr.Recognizer()
+                with sr.AudioFile(speech_audio_file) as source:
+                    recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                    audio_data = recognizer.record(source)
+                text = recognizer.recognize_google(audio_data, language="en-US")
+                if speech_audio_file != audio_file and speech_audio_file != temp_wav_path and os.path.exists(speech_audio_file):
+                    try:
+                        os.remove(speech_audio_file)
+                    except Exception:
+                        pass
+                return text.strip() if text else None
+            except (sr.UnknownValueError, sr.RequestError, Exception):
+                return None
 
-            if len(content) == 0:
-                raise Exception("Audio file is empty")
+        # Method 1: Try SpeechRecognition first when available (Python 3.12 – free, no API key)
+        if not transcription_success and SPEECH_RECOGNITION_AVAILABLE:
+            print("Attempting transcription with SpeechRecognition (free, no API key)...")
+            try:
+                text = _try_speech_recognition()
+                if text:
+                    print(f"✅ SpeechRecognition transcription successful: {text[:100]}...")
+                    recording.transcript_text = text
+                    recording.save()
+                    transcription_success = True
+                else:
+                    print("⚠️ SpeechRecognition returned no text")
+            except Exception as e3:
+                print(f"❌ SpeechRecognition error: {e3}")
+                import traceback
+                print(traceback.format_exc())
 
-            audio = speech.RecognitionAudio(content=content)
-            config = speech.RecognitionConfig(
-                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-                sample_rate_hertz=16000,
-                language_code="en-US",
-            )
+        # Method 2: Google Cloud Speech API
+        if not transcription_success:
+            print("Attempting transcription with Google Cloud Speech API...")
+            try:
+                google_creds = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+                if not google_creds and not os.path.exists(os.path.expanduser('~/.config/gcloud/application_default_credentials.json')):
+                    print("⚠️ Google Cloud credentials not found. Skipping.")
+                    raise Exception("Google Cloud credentials not configured")
 
-            response = client.recognize(config=config, audio=audio)
-            
-            text = ""
-            if response.results:
-                for result in response.results:
-                    if result.alternatives:
-                        text += result.alternatives[0].transcript + " "
-                text = text.strip()
-                
+                client = speech.SpeechClient()
+                with open(audio_file, 'rb') as audio_file_obj:
+                    content = audio_file_obj.read()
+                if len(content) == 0:
+                    raise Exception("Audio file is empty")
+                audio = speech.RecognitionAudio(content=content)
+                config = speech.RecognitionConfig(
+                    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                    sample_rate_hertz=16000,
+                    language_code="en-US",
+                )
+                response = client.recognize(config=config, audio=audio)
+                text = ""
+                if response.results:
+                    for result in response.results:
+                        if result.alternatives:
+                            text += result.alternatives[0].transcript + " "
+                    text = text.strip()
                 if text:
                     print(f"✅ Google Cloud Speech API transcription successful: {text[:100]}...")
                     recording.transcript_text = text
                     recording.save()
                     transcription_success = True
                 else:
-                    print("⚠️ Google Cloud Speech API returned empty results")
-            else:
-                print("⚠️ Google Cloud Speech API returned no results")
+                    print("⚠️ Google Cloud Speech API returned no results")
+            except Exception as e:
+                print(f"❌ Google Cloud Speech API error: {e}")
+                import traceback
+                print(traceback.format_exc())
 
-        except Exception as e:
-            error_msg = str(e)
-            print(f"❌ Google Cloud Speech API error: {error_msg}")
-            import traceback
-            print(traceback.format_exc())
-            
-            # Method 2: Fallback to AssemblyAI
-            if not transcription_success:
-                print("Attempting transcription with AssemblyAI (fallback)...")
-                try:
-                    from dotenv import load_dotenv
-                    load_dotenv()
-                    assemblyai_api_key = os.getenv('ASSEMBLYAI_API_KEY')
-                    
-                    if not assemblyai_api_key:
-                        print("⚠️ Warning: ASSEMBLYAI_API_KEY not found in environment variables")
-                        raise Exception("AssemblyAI API key not configured")
-                    
-                    # Initialize AssemblyAI transcriber
-                    transcriber = Transcriber(api_key=assemblyai_api_key)
-                    
-                    # Upload and transcribe audio file
-                    with open(audio_file, 'rb') as f:
-                        # Submit transcription job
-                        transcript = transcriber.transcribe(f)
-                    
-                    # Wait for transcription to complete (polling)
-                    max_wait_time = 300  # 5 minutes max
-                    wait_time = 0
-                    while transcript.status not in ['completed', 'error'] and wait_time < max_wait_time:
-                        time.sleep(2)
-                        wait_time += 2
-                        try:
-                            transcript = transcriber.get_transcript(transcript.id)
-                        except Exception as poll_error:
-                            print(f"Error polling transcript status: {poll_error}")
-                            break
-                    
-                    if transcript.status == 'error':
-                        raise Exception(f"AssemblyAI transcription error: {getattr(transcript, 'error', 'Unknown error')}")
-                    
-                    if transcript.status == 'completed':
-                        text = getattr(transcript, 'text', '')
-                        if text:
-                            print(f"✅ AssemblyAI transcription successful: {text[:100]}...")
-                            recording.transcript_text = text
-                            recording.save()
-                            transcription_success = True
-                        else:
-                            print("⚠️ AssemblyAI returned empty transcript")
+        # Method 3: AssemblyAI fallback
+        if not transcription_success:
+            print("Attempting transcription with AssemblyAI (fallback)...")
+            try:
+                from dotenv import load_dotenv
+                load_dotenv()
+                assemblyai_api_key = os.getenv('ASSEMBLYAI_API_KEY')
+                if not assemblyai_api_key:
+                    print("⚠️ ASSEMBLYAI_API_KEY not found. Skipping.")
+                    raise Exception("AssemblyAI API key not configured")
+
+                transcriber = Transcriber(api_key=assemblyai_api_key)
+                with open(audio_file, 'rb') as f:
+                    transcript = transcriber.transcribe(f)
+                max_wait_time = 300
+                wait_time = 0
+                while transcript.status not in ['completed', 'error'] and wait_time < max_wait_time:
+                    time.sleep(2)
+                    wait_time += 2
+                    try:
+                        transcript = transcriber.get_transcript(transcript.id)
+                    except Exception as poll_error:
+                        print(f"Error polling transcript status: {poll_error}")
+                        break
+                if transcript.status == 'error':
+                    raise Exception(getattr(transcript, 'error', 'Unknown error'))
+                if transcript.status == 'completed':
+                    text = getattr(transcript, 'text', '')
+                    if text:
+                        print(f"✅ AssemblyAI transcription successful: {text[:100]}...")
+                        recording.transcript_text = text
+                        recording.save()
+                        transcription_success = True
                     else:
-                        print(f"⚠️ AssemblyAI transcription timed out or incomplete (status: {transcript.status})")
-                        
-                except Exception as e2:
-                    error_msg2 = str(e2)
-                    print(f"❌ AssemblyAI error: {error_msg2}")
-                    import traceback
-                    print(traceback.format_exc())
-                    
-                    # Method 3: Fallback to offline SpeechRecognition (free, no API key needed)
-                    if not transcription_success and SPEECH_RECOGNITION_AVAILABLE:
-                        print("Attempting transcription with offline SpeechRecognition (free fallback)...")
-                        try:
-                            # Ensure we have a WAV file for SpeechRecognition
-                            recognizer = sr.Recognizer()
-                            
-                            # Check if audio_file is already WAV, if not we need to use temp_wav_path
-                            speech_audio_file = audio_file
-                            if not audio_file.endswith('.wav'):
-                                # We should have temp_wav_path from earlier conversion
-                                if temp_wav_path and os.path.exists(temp_wav_path):
-                                    speech_audio_file = temp_wav_path
-                                else:
-                                    # Convert to WAV for SpeechRecognition
-                                    speech_wav_path = f'temp_speech_{recording_id}_{int(time.time())}.wav'
-                                    try:
-                                        ffmpeg.input(audio_file).output(speech_wav_path, acodec='pcm_s16le', ar=16000).run(overwrite_output=True, quiet=True)
-                                        speech_audio_file = speech_wav_path
-                                    except:
-                                        print("⚠️ Could not convert audio to WAV for SpeechRecognition")
-                                        raise
-                            
-                            # Use the WAV audio file
-                            with sr.AudioFile(speech_audio_file) as source:
-                                # Adjust for ambient noise
-                                recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                                # Record the audio
-                                audio_data = recognizer.record(source)
-                            
-                            # Try Google's free speech recognition (uses Google's web API, no key needed for small files)
-                            try:
-                                text = recognizer.recognize_google(audio_data, language="en-US")
-                                if text:
-                                    print(f"✅ Offline SpeechRecognition transcription successful: {text[:100]}...")
-                                    recording.transcript_text = text
-                                    recording.save()
-                                    transcription_success = True
-                            except sr.UnknownValueError:
-                                print("⚠️ SpeechRecognition could not understand the audio")
-                            except sr.RequestError as e:
-                                print(f"⚠️ SpeechRecognition service error: {e}")
-                            
-                            # Clean up temporary WAV file if we created one
-                            if speech_audio_file != audio_file and speech_audio_file != temp_wav_path:
-                                if os.path.exists(speech_audio_file):
-                                    try:
-                                        os.remove(speech_audio_file)
-                                    except:
-                                        pass
-                                
-                        except Exception as e3:
-                            error_msg3 = str(e3)
-                            print(f"❌ SpeechRecognition error: {error_msg3}")
-                            import traceback
-                            print(traceback.format_exc())
-                    elif not transcription_success and not SPEECH_RECOGNITION_AVAILABLE:
-                        print("⚠️ SpeechRecognition not available (Python 3.13+ compatibility issues)")
-                        print("💡 SpeechRecognition requires 'aifc' and 'audioop' modules removed in Python 3.13")
-                        print("💡 To enable transcription, configure one of:")
-                        print("   1. GOOGLE_APPLICATION_CREDENTIALS (path to Google Cloud service account JSON)")
-                        print("   2. ASSEMBLYAI_API_KEY (AssemblyAI API key)")
-                        print("   3. Or use Python 3.12 or earlier for free SpeechRecognition fallback")
+                        print("⚠️ AssemblyAI returned empty transcript")
+                else:
+                    print(f"⚠️ AssemblyAI status: {transcript.status}")
+            except Exception as e2:
+                print(f"❌ AssemblyAI error: {e2}")
+                import traceback
+                print(traceback.format_exc())
+
+        if not SPEECH_RECOGNITION_AVAILABLE and not transcription_success:
+            print("💡 SpeechRecognition not available (Python 3.13+). Use Python 3.12 for free transcription, or set GOOGLE_APPLICATION_CREDENTIALS / ASSEMBLYAI_API_KEY")
 
         # If all methods failed, set empty transcript
         if not transcription_success:
             print(f"❌ All transcription methods failed for recording {recording_id}")
-            print(f"💡 Tip: To enable transcription, configure one of:")
-            print(f"   1. GOOGLE_APPLICATION_CREDENTIALS (path to Google Cloud service account JSON)")
-            print(f"   2. ASSEMBLYAI_API_KEY (AssemblyAI API key)")
-            print(f"   3. Or use the free offline SpeechRecognition (already tried)")
+            print(f"💡 Tip: On Python 3.12, SpeechRecognition (free) is tried first. Otherwise set GOOGLE_APPLICATION_CREDENTIALS or ASSEMBLYAI_API_KEY.")
             recording.transcript_text = ""
             recording.save()
 
