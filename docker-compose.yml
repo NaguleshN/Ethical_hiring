@@ -1,0 +1,48 @@
+# Run: docker compose up --build
+# Web: http://localhost:8000
+# Redis is used by Celery; Celery worker runs in the celery service.
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    volumes:
+      - .:/app
+      - media_data:/app/media
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  celery:
+    build: .
+    command: celery -A Hiring_platform worker --loglevel=info
+    env_file: .env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    volumes:
+      - .:/app
+      - media_data:/app/media
+    depends_on:
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+volumes:
+  media_data:
